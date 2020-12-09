@@ -1,13 +1,9 @@
 use petgraph::graphmap::DiGraphMap;
-use petgraph::visit::{Bfs};
-use petgraph::algo::*;
+use petgraph::visit::{Bfs, Dfs};
 use petgraph::prelude::*;
-use petgraph::visit::depth_first_search;
-use petgraph::visit::{DfsEvent};
 use regex::Regex;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-
 fn main() {
     test_rule_generate();
     let data = read_data("src/input.txt");
@@ -69,22 +65,21 @@ fn find_contains(bag_graph: &DiGraphMap::<&str, f32>, starting_bag: &str) -> Vec
     return bags;
 }
 
-fn dfs(bag_graph: &DiGraphMap::<&str, f32>, starting_bag: &str) -> f32 {
+fn dfs<'a>(bag_graph: &DiGraphMap::<&'a str, f32>, starting_bag: &str) -> f32 {
     let mut count = 0.0;
-    depth_first_search(&bag_graph, Some(starting_bag), |event| {
-        if let DfsEvent::TreeEdge(u, v) = event {
-            let edge_multiplier = bag_graph.edge_weight(u, v).unwrap();
-            count += edge_multiplier + edge_multiplier * dfs(bag_graph, v);
-        }
-    });
 
+    let mut dfs_handler = Dfs::new(bag_graph, starting_bag);
+    while let Some(visited) = dfs_handler.next(bag_graph) {
+        if bag_graph.contains_edge(starting_bag, visited) {
+            let edge_multiplier = bag_graph.edge_weight(starting_bag, visited).unwrap();
+            count += edge_multiplier + edge_multiplier * dfs(bag_graph, visited);
+        }
+    }
     return count;
 }
 
 fn find_required(bag_graph: &DiGraphMap::<&str, f32>, starting_bag: &str) -> f32 {
     let mut number_of_bags = 0.0;
-
-    let tree = min_spanning_tree(bag_graph);
 
     for neighbor in bag_graph.neighbors_directed(starting_bag, Outgoing) {
         let edge = bag_graph.edge_weight(starting_bag, neighbor).unwrap();
